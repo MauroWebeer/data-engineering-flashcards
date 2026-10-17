@@ -19,14 +19,31 @@
     <main class="w-full max-w-4xl flex-grow flex flex-col items-center justify-center my-8">
         
         <!-- Loading State -->
-        <div id="loading" class="text-slate-400 animate-pulse text-lg">Carregando cards do Notion...</div>
+        <div id="loading" class="flex flex-col items-center gap-3 text-slate-400">
+            <div class="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-sm">Carregando cards do Notion...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="error-state" class="hidden flex flex-col items-center text-center gap-4 bg-slate-800 border border-red-500/30 p-8 rounded-xl max-w-md shadow-lg">
+            <svg class="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <div>
+                <h3 class="text-lg font-semibold text-slate-200">Falha na conexão</h3>
+                <p id="error-message" class="text-xs text-slate-400 mt-1">Não foi possível conectar ao servidor backend FastAPI.</p>
+            </div>
+            <button onclick="fetchCards()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors">
+                Tentar novamente
+            </button>
+        </div>
 
         <!-- Grid Container (Estado 1) -->
         <div id="cards-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full"></div>
 
         <!-- Single Active Card Container (Estados 2 e 3) -->
         <div id="active-card-container" class="hidden w-full max-w-xl flex flex-col items-center">
-            <div id="flashcard" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-8 shadow-2xl cursor-pointer transition-all duration-300 min-h-[260px] flex flex-col justify-between text-center select-none hover:border-indigo-500">
+            <div id="flashcard" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-8 shadow-2xl cursor-pointer transition-all duration-300 min-h-[280px] flex flex-col justify-between text-center select-none hover:border-indigo-500">
                 
                 <!-- Card Header (Tema & Número) -->
                 <div class="flex justify-between items-center text-xs font-semibold text-indigo-400 uppercase tracking-wider">
@@ -47,8 +64,8 @@
 
             <!-- Controls -->
             <div class="flex gap-4 mt-6">
-                <button id="btn-back" class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium rounded-lg transition-colors">
-                    ← Voltar ao Grid
+                <button id="btn-back" class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium rounded-lg transition-colors flex items-center gap-2">
+                    <span>← Voltar ao Grid</span>
                 </button>
             </div>
         </div>
@@ -65,10 +82,12 @@
         const API_URL = "http://127.0.0.1:8000/api/cards";
         
         let cardsData = [];
-        let currentState = "GRID"; // "GRID", "QUESTION", "ANSWER"
+        let currentState = "GRID"; 
         let activeCard = null;
 
         const loadingEl = document.getElementById("loading");
+        const errorStateEl = document.getElementById("error-state");
+        const errorMessageEl = document.getElementById("error-message");
         const gridEl = document.getElementById("cards-grid");
         const activeContainerEl = document.getElementById("active-card-container");
         const flashcardEl = document.getElementById("flashcard");
@@ -78,28 +97,44 @@
         const instructionEl = document.getElementById("card-instruction");
         const btnBackEl = document.getElementById("btn-back");
 
+        function showState(state) {
+            loadingEl.classList.add("hidden");
+            errorStateEl.classList.add("hidden");
+            gridEl.classList.add("hidden");
+            activeContainerEl.classList.add("hidden");
+
+            if (state === "LOADING") loadingEl.classList.remove("hidden");
+            if (state === "ERROR") errorStateEl.classList.remove("hidden");
+            if (state === "GRID") gridEl.classList.remove("hidden");
+            if (state === "ACTIVE") activeContainerEl.classList.remove("hidden");
+        }
+
         async function fetchCards() {
+            showState("LOADING");
             try {
                 const response = await fetch(API_URL);
+                if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
+                
                 const result = await response.json();
                 if (result.status === "success") {
                     cardsData = result.data;
                     renderGrid();
                 } else {
-                    loadingEl.textContent = "Erro ao carregar os dados.";
+                    throw new Error("Formato de resposta inválido do servidor.");
                 }
             } catch (error) {
                 console.error("Erro de conexão:", error);
-                loadingEl.textContent = "Erro de conexão com o backend FastAPI.";
+                errorMessageEl.textContent = error.message.includes("Failed to fetch") 
+                    ? "Não foi possível conectar ao servidor FastAPI. Verifique se ele está rodando."
+                    : error.message;
+                showState("ERROR");
             }
         }
 
         function renderGrid() {
-            loadingEl.classList.add("hidden");
-            gridEl.classList.remove("hidden");
-            activeContainerEl.classList.add("hidden");
-            
+            showState("GRID");
             gridEl.innerHTML = "";
+            
             cardsData.forEach((card, index) => {
                 const cardDiv = document.createElement("div");
                 cardDiv.className = "bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-md hover:shadow-indigo-500/10 hover:border-indigo-500 cursor-pointer transition-all flex flex-col justify-between h-40";
@@ -121,14 +156,13 @@
         function selectCard(card) {
             activeCard = card;
             currentState = "QUESTION";
-            
-            gridEl.classList.add("hidden");
-            activeContainerEl.classList.remove("hidden");
+            showState("ACTIVE");
             
             themeLabelEl.textContent = card.card_theme || "Geral";
             numberLabelEl.textContent = `#${card.card_number ?? '—'}`;
             mainTextEl.textContent = card.card_question;
             instructionEl.textContent = "Clique no card para revelar a resposta";
+            flashcardEl.classList.remove("border-indigo-500");
         }
 
         flashcardEl.addEventListener("click", () => {
@@ -141,7 +175,6 @@
                 renderGrid();
                 currentState = "GRID";
                 activeCard = null;
-                flashcardEl.classList.remove("border-indigo-500");
             }
         });
 
