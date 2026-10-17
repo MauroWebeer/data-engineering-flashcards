@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Numbered Questions (Sequential)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-between p-6">
+
+    <header class="w-full max-w-4xl flex items-center justify-between py-6">
+        <a href="index.html" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5">
+            <span>← Home</span>
+        </a>
+        <div class="text-center">
+            <h1 class="text-2xl font-bold tracking-tight text-emerald-400">Numbered Questions</h1>
+            <p class="text-slate-400 text-xs mt-0.5">Sequential Review Mode</p>
+        </div>
+        <div class="w-16"></div>
+    </header>
+
+    <main class="w-full max-w-4xl flex-grow flex flex-col items-center justify-center my-8">
+        <div id="loading" class="flex flex-col items-center gap-3 text-slate-400">
+            <div class="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-sm">Loading ordered cards...</p>
+        </div>
+
+        <div id="error-state" class="hidden flex flex-col items-center text-center gap-4 bg-slate-800 border border-red-500/30 p-8 rounded-xl max-w-md shadow-lg">
+            <h3 class="text-lg font-semibold text-slate-200">Connection Failed</h3>
+            <p id="error-message" class="text-xs text-slate-400 mt-1">Could not connect to backend.</p>
+            <button onclick="fetchCards()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg">Try Again</button>
+        </div>
+
+        <div id="cards-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full"></div>
+
+        <div id="active-card-container" class="hidden w-full max-w-xl flex flex-col items-center">
+            <div id="flashcard" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-8 shadow-2xl cursor-pointer transition-all duration-300 min-h-[280px] flex flex-col justify-between text-center select-none hover:border-emerald-500">
+                <div class="flex justify-between items-center text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+                    <span id="card-state-label">Question</span>
+                    <span id="card-number-label">#0</span>
+                </div>
+                <div class="my-auto py-6">
+                    <h3 id="card-main-text" class="text-xl font-medium text-slate-100">Question here</h3>
+                </div>
+                <div class="text-xs text-slate-400 italic">
+                    <span id="card-instruction">Click to reveal answer</span>
+                </div>
+            </div>
+            <div class="flex gap-4 mt-6">
+                <button id="btn-back" class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium rounded-lg transition-colors">
+                    ← Back to Grid
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-xs text-slate-400 py-4">
+        Powered by FastAPI & Notion API
+    </footer>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000/api/cards";
+        let cardsData = [];
+        let currentState = "QUESTION";
+        let activeCard = null;
+
+        const loadingEl = document.getElementById("loading");
+        const errorStateEl = document.getElementById("error-state");
+        const errorMessageEl = document.getElementById("error-message");
+        const gridEl = document.getElementById("cards-grid");
+        const activeContainerEl = document.getElementById("active-card-container");
+        const flashcardEl = document.getElementById("flashcard");
+        const stateLabelEl = document.getElementById("card-state-label");
+        const numberLabelEl = document.getElementById("card-number-label");
+        const mainTextEl = document.getElementById("card-main-text");
+        const instructionEl = document.getElementById("card-instruction");
+        const btnBackEl = document.getElementById("btn-back");
+
+        function showState(state) {
+            loadingEl.classList.add("hidden");
+            errorStateEl.classList.add("hidden");
+            gridEl.classList.add("hidden");
+            activeContainerEl.classList.add("hidden");
+
+            if (state === "LOADING") loadingEl.classList.remove("hidden");
+            if (state === "ERROR") errorStateEl.classList.remove("hidden");
+            if (state === "GRID") gridEl.classList.remove("hidden");
+            if (state === "ACTIVE") activeContainerEl.classList.remove("hidden");
+        }
+
+        async function fetchCards() {
+            showState("LOADING");
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                const result = await response.json();
+                if (result.status === "success") {
+                    // Ordena estritamente por card_number em ordem crescente
+                    cardsData = result.data.sort((a, b) => (a.card_number || 0) - (b.card_number || 0));
+                    renderGrid();
+                } else {
+                    throw new Error("Invalid response format.");
+                }
+            } catch (error) {
+                errorMessageEl.textContent = error.message;
+                showState("ERROR");
+            }
+        }
+
+        function renderGrid() {
+            showState("GRID");
+            gridEl.innerHTML = "";
+            
+            cardsData.forEach((card, index) => {
+                const cardDiv = document.createElement("div");
+                cardDiv.className = "bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-md hover:shadow-emerald-500/10 hover:border-emerald-500 cursor-pointer transition-all flex flex-col justify-between h-40";
+                cardDiv.innerHTML = `
+                    <div class="flex justify-between items-center text-xs font-semibold text-emerald-400">
+                        <span>#${card.card_number ?? (index + 1)}</span>
+                        <span class="bg-slate-700 text-slate-300 px-2 py-0.5 rounded text-[10px]">${card.card_theme || 'General'}</span>
+                    </div>
+                    <div class="my-auto">
+                        <h3 class="text-sm font-medium text-slate-200 line-clamp-2">${card.card_question}</h3>
+                    </div>
+                    <div class="text-[11px] text-slate-400 text-right">Open card →</div>
+                `;
+                cardDiv.addEventListener("click", () => selectCard(card));
+                gridEl.appendChild(cardDiv);
+            });
+        }
+
+        function selectCard(card) {
+            activeCard = card;
+            currentState = "QUESTION";
+            showState("ACTIVE");
+            
+            stateLabelEl.textContent = "Question";
+            numberLabelEl.textContent = `#${card.card_number ?? '—'}`;
+            mainTextEl.textContent = card.card_question;
+            mainTextEl.className = "text-xl font-medium text-slate-100";
+            instructionEl.textContent = "Click to reveal answer";
+            flashcardEl.classList.remove("border-emerald-500");
+        }
+
+        flashcardEl.addEventListener("click", () => {
+            if (currentState === "QUESTION") {
+                currentState = "ANSWER";
+                stateLabelEl.textContent = "Answer";
+                mainTextEl.textContent = activeCard.card_answer;
+                mainTextEl.className = "text-xl font-medium text-emerald-300";
+                instructionEl.textContent = "Click again to return to grid";
+                flashcardEl.classList.add("border-emerald-500");
+            } else if (currentState === "ANSWER") {
+                renderGrid();
+                currentState = "GRID";
+                activeCard = null;
+            }
+        });
+
+        btnBackEl.addEventListener("click", () => {
+            renderGrid();
+            currentState = "GRID";
+            activeCard = null;
+        });
+
+        fetchCards();
+    </script>
+</body>
+</html>

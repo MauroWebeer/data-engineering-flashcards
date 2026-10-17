@@ -12,47 +12,50 @@
     <!-- Header -->
     <header class="w-full max-w-4xl text-center py-6">
         <h1 class="text-3xl font-bold tracking-tight text-indigo-400">Data Engineering Flashcards</h1>
-        <p class="text-slate-400 text-sm mt-1">Select a flashcard collection to start your interview training</p>
+        <p class="text-slate-400 text-sm mt-1">Select a study mode for your interview training</p>
     </header>
 
-    <!-- Main Container - Models Selection Grid -->
+    <!-- Main Container - Study Modes Grid -->
     <main class="w-full max-w-4xl flex-grow flex flex-col items-center justify-center my-8">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
             
-            <!-- Model 1: General & Core Concepts (Ativo) -->
-            <div onclick="window.location.href='flashcards.html'" class="bg-slate-800 border border-slate-700 hover:border-indigo-500 rounded-xl p-6 shadow-xl cursor-pointer transition-all flex flex-col justify-between group">
+            <!-- Mode 1: Random Theme Cards -->
+            <div onclick="window.location.href='theme_cards.html'" class="bg-slate-800 border border-slate-700 hover:border-indigo-500 rounded-xl p-6 shadow-xl cursor-pointer transition-all flex flex-col justify-between group">
                 <div>
                     <div class="flex justify-between items-center mb-4">
-                        <span class="bg-indigo-500/10 text-indigo-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-indigo-500/20">Active Model</span>
+                        <span class="bg-indigo-500/10 text-indigo-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-indigo-500/20">Randomized</span>
                         <svg class="w-5 h-5 text-slate-500 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                         </svg>
                     </div>
-                    <h2 class="text-xl font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors">Core Data Engineering</h2>
+                    <h2 class="text-xl font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors">Theme-based Flashcards</h2>
                     <p class="text-slate-400 text-xs mt-2 leading-relaxed">
-                        Fundamental questions covering data modeling, orchestration, big data frameworks, and cloud pipelines integrated directly from Notion.
+                        Randomized cards displaying only the core concept theme. Perfect for practicing active recall without positional bias.
                     </p>
                 </div>
                 <div class="mt-6 pt-4 border-t border-slate-700/60 flex justify-between items-center text-xs text-slate-400">
                     <span>Source: Notion Database</span>
-                    <span class="text-indigo-400 font-medium">Start training →</span>
+                    <span class="text-indigo-400 font-medium">Start session →</span>
                 </div>
             </div>
 
-            <!-- Model 2: Future Model (Disabled/Placeholder) -->
-            <div class="bg-slate-800/50 border border-slate-800 rounded-xl p-6 shadow-md opacity-60 cursor-not-allowed flex flex-col justify-between">
+            <!-- Mode 2: Sequential Numbered Questions -->
+            <div onclick="window.location.href='numbered_cards.html'" class="bg-slate-800 border border-slate-700 hover:border-indigo-500 rounded-xl p-6 shadow-xl cursor-pointer transition-all flex flex-col justify-between group">
                 <div>
                     <div class="flex justify-between items-center mb-4">
-                        <span class="bg-slate-700 text-slate-400 text-xs font-semibold px-2.5 py-1 rounded-full">Coming Soon</span>
+                        <span class="bg-emerald-500/10 text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-500/20">Sequential</span>
+                        <svg class="w-5 h-5 text-slate-500 group-hover:text-emerald-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                        </svg>
                     </div>
-                    <h2 class="text-xl font-semibold text-slate-300">System Design & Architecture</h2>
-                    <p class="text-slate-500 text-xs mt-2 leading-relaxed">
-                        Advanced scenario-based questions focusing on large-scale data lakehouse design, streaming architectures, and cost optimization.
+                    <h2 class="text-xl font-semibold text-slate-100 group-hover:text-emerald-300 transition-colors">Numbered Questions</h2>
+                    <p class="text-slate-400 text-xs mt-2 leading-relaxed">
+                        Ordered flashcards sorted by card number showing initial question excerpts. Ideal for structured, step-by-step revisions.
                     </p>
                 </div>
-                <div class="mt-6 pt-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-500">
+                <div class="mt-6 pt-4 border-t border-slate-700/60 flex justify-between items-center text-xs text-slate-400">
                     <span>Source: Notion Database</span>
-                    <span>Locked</span>
+                    <span class="text-emerald-400 font-medium">Start session →</span>
                 </div>
             </div>
 
