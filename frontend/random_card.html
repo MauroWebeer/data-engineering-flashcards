@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Card Draw</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-between p-6">
+
+    <!-- Header -->
+    <header class="w-full max-w-4xl flex items-center justify-between py-6">
+        <a href="index.html" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5">
+            <span>← Home</span>
+        </a>
+        <div class="text-center">
+            <h1 class="text-2xl font-bold tracking-tight text-amber-400">Random Card Draw</h1>
+            <p class="text-slate-400 text-xs mt-0.5">Surprise Question Mode</p>
+        </div>
+        <div class="w-16"></div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="w-full max-w-4xl flex-grow flex flex-col items-center justify-center my-8">
+        
+        <!-- Loading State -->
+        <div id="loading" class="flex flex-col items-center gap-3 text-slate-400">
+            <div class="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-sm">Loading cards from Notion...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="error-state" class="hidden flex flex-col items-center text-center gap-4 bg-slate-800 border border-red-500/30 p-8 rounded-xl max-w-md shadow-lg">
+            <h3 class="text-lg font-semibold text-slate-200">Connection Failed</h3>
+            <p id="error-message" class="text-xs text-slate-400 mt-1">Could not connect to backend.</p>
+            <button onclick="fetchCards()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg">Try Again</button>
+        </div>
+
+        <!-- Initial Draw Screen (State: READY) -->
+        <div id="draw-screen" class="hidden flex flex-col items-center text-center gap-6">
+            <div class="bg-slate-800 border border-slate-700 p-8 rounded-2xl shadow-xl max-w-md">
+                <h3 class="text-xl font-semibold text-slate-200 mb-2">Ready for a challenge?</h3>
+                <p class="text-slate-400 text-xs mb-6 leading-relaxed">Click the button below to randomly draw a data engineering question from your Notion database.</p>
+                <button onclick="drawRandomCard()" class="px-6 py-3 bg-amber-600 hover:bg-amber-500 text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-amber-600/20 flex items-center justify-center gap-2 mx-auto">
+                    <span>🎲 Draw Random Card</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Active Flashcard Screen (States: QUESTION / ANSWER) -->
+        <div id="active-card-container" class="hidden w-full max-w-xl flex flex-col items-center">
+            <div id="flashcard" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-8 shadow-2xl cursor-pointer transition-all duration-300 min-h-[280px] flex flex-col justify-between text-center select-none hover:border-amber-500">
+                <div class="flex justify-between items-center text-xs font-semibold text-amber-400 uppercase tracking-wider">
+                    <span id="card-state-label">Question</span>
+                    <span id="card-theme-tag" class="bg-slate-700 text-slate-300 px-2 py-0.5 rounded text-[10px]">Theme</span>
+                </div>
+                <div class="my-auto py-6">
+                    <h3 id="card-main-text" class="text-xl font-medium text-slate-100">Question here</h3>
+                </div>
+                <div class="text-xs text-slate-400 italic">
+                    <span id="card-instruction">Click to reveal answer</span>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex gap-4 mt-6">
+                <button onclick="drawRandomCard()" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-amber-600/20">
+                    🎲 Draw Another
+                </button>
+                <button onclick="resetToDrawScreen()" class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium rounded-lg transition-colors">
+                    ← Back to Start
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-xs text-slate-400 py-4">
+        Powered by FastAPI & Notion API
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        const API_URL = "http://127.0.0.1:8000/api/cards";
+        let cardsData = [];
+        let currentCard = null;
+        let currentState = "READY"; // "READY", "QUESTION", "ANSWER"
+
+        const loadingEl = document.getElementById("loading");
+        const errorStateEl = document.getElementById("error-state");
+        const errorMessageEl = document.getElementById("error-message");
+        const drawScreenEl = document.getElementById("draw-screen");
+        const activeContainerEl = document.getElementById("active-card-container");
+        const flashcardEl = document.getElementById("flashcard");
+        const stateLabelEl = document.getElementById("card-state-label");
+        const themeTagEl = document.getElementById("card-theme-tag");
+        const mainTextEl = document.getElementById("card-main-text");
+        const instructionEl = document.getElementById("card-instruction");
+
+        function showScreen(screen) {
+            loadingEl.classList.add("hidden");
+            errorStateEl.classList.add("hidden");
+            drawScreenEl.classList.add("hidden");
+            activeContainerEl.classList.add("hidden");
+
+            if (screen === "LOADING") loadingEl.classList.remove("hidden");
+            if (screen === "ERROR") errorStateEl.classList.remove("hidden");
+            if (screen === "DRAW") drawScreenEl.classList.remove("hidden");
+            if (screen === "ACTIVE") activeContainerEl.classList.remove("hidden");
+        }
+
+        async function fetchCards() {
+            showScreen("LOADING");
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                const result = await response.json();
+                if (result.status === "success" && result.data.length > 0) {
+                    cardsData = result.data;
+                    showScreen("DRAW");
+                } else {
+                    throw new Error("No cards found in Notion database.");
+                }
+            } catch (error) {
+                errorMessageEl.textContent = error.message;
+                showScreen("ERROR");
+            }
+        }
+
+        function drawRandomCard() {
+            if (cardsData.length === 0) return;
+            
+            // Sorteia um índice aleatório
+            const randomIndex = Math.floor(Math.random() * cardsData.length);
+            currentCard = cardsData[randomIndex];
+            
+            currentState = "QUESTION";
+            showScreen("ACTIVE");
+
+            stateLabelEl.textContent = "Question";
+            themeTagEl.textContent = currentCard.card_theme || "General";
+            mainTextEl.textContent = currentCard.card_question;
+            mainTextEl.className = "text-xl font-medium text-slate-100";
+            instructionEl.textContent = "Click to reveal answer";
+            flashcardEl.classList.remove("border-amber-500");
+        }
+
+        flashcardEl.addEventListener("click", () => {
+            if (currentState === "QUESTION") {
+                currentState = "ANSWER";
+                stateLabelEl.textContent = "Answer";
+                mainTextEl.textContent = currentCard.card_answer;
+                mainTextEl.className = "text-xl font-medium text-emerald-300";
+                instructionEl.textContent = "Click to draw another card";
+                flashcardEl.classList.add("border-amber-500");
+            } else if (currentState === "ANSWER") {
+                drawRandomCard(); // Próximo clique já sorteia outro card diretamente
+            }
+        });
+
+        function resetToDrawScreen() {
+            showScreen("DRAW");
+            currentCard = null;
+            currentState = "READY";
+        }
+
+        fetchCards();
+    </script>
+</body>
+</html>
