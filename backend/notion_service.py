@@ -1,0 +1,60 @@
+# backend/notion_service.py
+import os
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Ajustado para o nome correto da chave
+NOTION_API_KEY = os.getenv("NOTION_API_KEY")
+NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
+
+NOTION_HEADERS = {
+    "Authorization": f"Bearer {NOTION_API_KEY}",
+    "Notion-Version": "2022-06-28",
+    "Content-Type": "application/json",
+}
+
+def fetch_notion_cards():
+    url = f"https://api.notion.com/v1/databases/{NOTION_DATABASE_ID}/query"
+    
+    response = requests.post(url, headers=NOTION_HEADERS, json={})
+    
+    if response.status_code != 200:
+        raise Exception(f"Erro ao conectar com o Notion: {response.status_code} - {response.text}")
+    
+    data = response.json()
+    cards = []
+
+    for page in data.get("results", []):
+        props = page.get("properties", {})
+        
+        try:
+            card_number = props.get("card_number", {}).get("number")
+            
+            theme_prop = props.get("card_theme", {})
+            card_theme = theme_prop.get("title", [{}])[0].get("text", {}).get("content", "") if theme_prop.get("type") == "title" else theme_prop.get("rich_text", [{}])[0].get("text", {}).get("content", "")
+            
+            question_prop = props.get("card_question", {}).get("rich_text", [])
+            card_question = question_prop[0].get("text", {}).get("content", "") if question_prop else ""
+            
+            answer_prop = props.get("card_answer", {}).get("rich_text", [])
+            card_answer = answer_prop[0].get("text", {}).get("content", "") if answer_prop else ""
+            
+            creation_date = props.get("creation_date", {}).get("created_time")
+            update_date = props.get("update_date", {}).get("last_edited_time")
+
+            cards.append({
+                "id": page.get("id"),
+                "card_number": card_number,
+                "card_theme": card_theme,
+                "card_question": card_question,
+                "card_answer": card_answer,
+                "creation_date": creation_date,
+                "update_date": update_date
+            })
+        except Exception as e:
+            print(f"Erro ao processar página do Notion: {e}")
+            continue
+
+    return cards
